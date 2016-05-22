@@ -1,5 +1,5 @@
 /*
-Tri Nguyen, Brian Mooney
+Tri Nguyen
 CS596 Machine Learning
 Dr. Liu 
 Sentiment Analysis using Support Vector Machine, Neural Network, and Logistic Regression
@@ -12,6 +12,7 @@ Consumer Secret (API Secret)	Vo7sfjoEOD7DP6haSFR2p4AFTE01qxfHTVSA8k1dgdARNlUQw1
 
 Access Token	4329704114-FtRczjVFxQMo6x2tzA2tfyyud1fOchMEjI7xBPq
 Access Token Secret	fyGrcotLQq7V1k94gergfJTXFcaHWcYBaV5nM3B5PSyvn
+
 */
 
 //importing tools
@@ -23,9 +24,8 @@ var so = require('stringify-object');
 var events = require('events');
 var fs = require('fs');
 var q = require('q');
-var nn = require('brain');
 
-//MAIN
+//variable and array declaration
 var trainData;
 var trainVocab;
 var trainLabels;
@@ -38,23 +38,27 @@ var trainVectorLabel = [];
 var predictionOutput;
 var svmModel;
 
+//Training the data
+
 //processTrainingData('/Users/yelp_labelled.txt');
 //processTrainingData('/Users/yelp_labelled2.txt');
-processTrainingData('/Users/imdb_labelled.txt');
-//processTrainingData('/Users/test');
+//processTrainingData('/Users/imdb_labelled.txt');
+processTrainingData('/Users/test');
 //processTrainingData('/Users/test2');
 
+
+//starting the stream of twitter feed 
 function twitterFeed(){
+
 	//taking input
 	console.log("Key word to find sentiment: ");
 	process.stdin.setEncoding('utf8');
-
 	process.stdin.on('readable', function(input) {
-	  var word = process.stdin.read();
-	  testVector = [];
-	  if (word !== null) {
-	  	streamInput(word);
-	  }
+		var word = process.stdin.read();
+	 
+		if (word !== null) {
+			streamInput(word);
+		}
 	});
 
 	process.stdin.on('end', function() {
@@ -76,8 +80,9 @@ function twitterFeed(){
 			client.stream('statuses/filter', {track: keyWord}, function(stream) {				
 			stream.on('data', function(tweet) {
 			  	
-			  	if(numberOfTweets < 500){ //number of tweets to take in
-				    //console.log(tweet.text);
+			  	//number of tweets to take in
+			  	if(numberOfTweets < 10){ 
+				    console.log(tweet.text);
 				    if(typeof(tweet.text) == 'string'){
 					    testVector.push(tweet.text);
 					    numberOfTweets++;
@@ -108,53 +113,36 @@ var eventEmitter = new events.EventEmitter();
 //Calling dtmTrainingData with sentence and labels
 eventEmitter.on('processDataDoneTrain', function(processTrainingData){
 	trainLabels = processTrainingData.labels;
-	//console.log(trainLabels);
 	trainVectorLabel.push(trainLabels);
 	dtmTrainingData(processTrainingData.data, processTrainingData.labels);
 });
 
-//Calling twitterFeed to get the live tweets 
+//Calling twitterFeed to get the tweets 
 eventEmitter.on('dtmDoneTrain', function(dtmTrainingData){
 	trainData = dtmTrainingData.terms;
 	trainVocab = dtmTrainingData.termsVocab;
-	//console.log(trainData);
-	//console.log(trainVectorLabel)
-	//console.log(trainVocab);
 	twitterFeed();
 });
 
 //Calling vectorize to make a DTM with the training vocab
 eventEmitter.on('tweetsReady', function(twitters){
-	//console.log(testVector)
-	// console.log(twitters)
 	vectorize(trainVocab, testVector);
 });
 
 //Calling getTrainingSet with DTM terms, and labels
 eventEmitter.on('vectorizeData', function(vectoredData){
-	//console.log(vectoredData)
 	testVectorDTM = vectoredData;
-	//printData();
 	getTrainingSet(trainData, trainLabels);
 });
 
 //Calling svmTrain with trainTuples and sentence from twitter.
 eventEmitter.on('trainingSet', function(tuplesTrain){
 	trainingTuple = tuplesTrain;
-	//console.log(trainingTuple, testVectorDTM);
 	svmTrain(trainingTuple, testVectorDTM);
-	//neuralNetwork(trainData, trainLabels, testVectorDTM);
 });
-
-// //calculate sentiment of NN
-// eventEmitter.on('nnResult', function(nnData){
-// 	nnCalculateData(nnPredictValues);
-// });
 
 //calculate sentiment
 eventEmitter.on('Result', function(dataSentiment){
-	//console.log(predictionValues);
-	//console.log(svmModel);
 	calculateSentiment(predictionValues);
 });
 
@@ -207,8 +195,6 @@ function processTrainingData(dataSet){
 function dtmTrainingData(data, label){
 	var corpus = new tm.Corpus(data);
 	var terms = new tm.Terms(corpus);
-	//console.log(terms.nTerms + "Terms");
-	//console.log(terms.nDocs + "Sentences");
 	
 	corpus
 		.removeInvalidCharacters() 
@@ -230,11 +216,8 @@ function dtmTrainingData(data, label){
 	eventEmitter.emit('dtmDoneTrain', returnDTM);
 }
 
-//create dtm out of incoming text
+//create document term matrix out of incoming text
 function vectorize(trainVocab, text){
-	//var text = ["Starbucks love and hate it."];
-	//console.log(trainVocab)
-	//console.log(text);
 	var i, j, k, q, u;
 	var textWordVector = [];
 	var completeTextWordVector = [];
@@ -245,8 +228,7 @@ function vectorize(trainVocab, text){
 		wordSplitArray.push(text[k].split(" "));
 	}
 
-	for(q = 0; q < wordSplitArray.length; q++){	
-		textWordVector = [];	
+	for(q = 0; q < wordSplitArray.length; q++){		
 		//comparing training vocab with textArray
 		for(i = 0; i < trainVocab.length; i++){
 			textWordVector[i] = 0;
@@ -279,93 +261,8 @@ function getTrainingSet(dtm, label){
 	eventEmitter.emit('trainingSet', result);
 }
 
-//Neural Network
-// function neuralNetwork(trainData, trainLabels, textArray){
-
-// 	var nnResult = [];
-// 	var i, j, k;
-
-// 	var net = new nn.NeuralNetwork({
-// 		errorThresh: 0.005,  // error threshold to reach 
-// 	    iterations: 20000,   // maximum training iterations 
-// 	    log: true,           // console.log() progress periodically 
-// 	    logPeriod: 10,       // number of iterations between logging 
-// 	    learningRate: 0.3    // learning rate 
-// 	});
-
-// 	//training parameters
-// 	for(i = 0; i < trainData.length; i++){
-// 		for(j = 0; j < trainLabels.length; j++){
-// 			net.train([{inputs: trainData[i], output: [trainLabels[j]]}]);
-// 		}
-
-// 		if((i+1) >= trainData.length){ 
-// 			for(k = 0; k < textArray.length; k++){
-// 				var outPut = net.run(textArray[k]);
-// 				//console.log(outPut)
-// 				nnPredictValues.push(outPut);
-
-// 				if((k+1) >= textArray.length){
-// 					//console.log(nnPredictValues);
-// 					eventEmitter.emit('nnResult', outPut);
-// 				}
-// 			}
-// 		}
-// 	}
-// }
-
-// function nnCalculateData(nnResult){
-// 	var i;
-// 	var positive = 0;
-// 	var negative = 0;
-
-// 	for(i = 0; i<nnPredictValues.length; i++){
-// 		if(nnPredictValues[i] >= .5){
-// 			positive++;
-// 		}
-// 		else{
-// 			negative++;
-// 		}
-
-// 		if((i+1) >= nnPredictValues.length){
-// 			console.log(" ");
-// 			console.log("===========================================");
-// 			console.log(" ");
-// 			console.log("*********Neural Network Data Report********");
-// 			console.log(" ");
-// 			console.log("Positives: " + positive);
-// 			console.log("Negatives: " + negative);
-// 			console.log(" ");
-
-// 			if(positive > negative){
-// 				console.log("Positive sentiment.");
-// 				console.log(" ");
-// 				positive = 0;
-// 				negative = 0;
-// 			}
-
-// 			if(positive < negative){
-// 				console.log("Negative sentiment.");
-// 				console.log(" ");
-// 				positive = 0;
-// 				negative = 0;
-// 			}
-
-// 			if(positive = negative){
-// 				console.log("Neutral sentiment.");
-// 				console.log(" ");
-// 				positive = 0;
-// 				negative = 0;
-// 			}
-
-// 			console.log("===========================================");
-// 		}
-// 	}
-// }
-
+//SVM method
 function svmTrain(trainData, textArray){
-	//console.log(trainData);
-	//console.log(textArray);
 	var i;
 
 	var clf = new svm.SVM({
@@ -391,7 +288,6 @@ function svmTrain(trainData, textArray){
 		clf.train(trainData).spread(function (model, report) {
 			svmModel = model;
 			svmReport = report;
-			//console.log(svmModel);
 
 			var newClf = svm.restore(svmModel);
 			for(i = 0; i < textArray.length; i++){
@@ -404,8 +300,8 @@ function svmTrain(trainData, textArray){
 		 	}
 		})
 	}
-	else{
 
+	else{
 		var newClf = svm.restore(svmModel);
 		for(i = 0; i < textArray.length; i++){
 			var prediction = newClf.predictSync(textArray[i]);
@@ -418,6 +314,7 @@ function svmTrain(trainData, textArray){
 	}
 }
 
+//function to tally up the positive an negative from the SVM prediction
 function calculateSentiment(svmPredictionValues){
 	var positive = 0; 
 	var negative = 0; 
@@ -472,19 +369,5 @@ function calculateSentiment(svmPredictionValues){
 	twitterFeed();
 	predictionValues.length = 0;
 }
-
-// function printData(){
-// 	var file = fs.createWriteStream('/Users/data.txt');
-// 	file.on('error', function(err) {  //error handling  
-// 	});
-// 	trainData.forEach(function(v) { file.write(v.join(', ') + ']\n['); });
-// 	console.log("copy done")
-// 	file.end()
-// 	}
-
-
-
-
-
 
 
