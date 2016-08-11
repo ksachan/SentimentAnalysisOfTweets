@@ -1,9 +1,9 @@
 /*
 Tri Nguyen
+Brian Mooney
 CS596 Machine Learning
 Dr. Liu 
-Sentiment Analysis using Support Vector Machine, Neural Network, and Logistic Regression
-
+Sentiment Analysis using Support Vector Machine
 
 TWITTER AUTH
 
@@ -81,7 +81,7 @@ function twitterFeed(){
 			stream.on('data', function(tweet) {
 			  	
 			  	//number of tweets to take in
-			  	if(numberOfTweets < 10){ 
+			  	if(numberOfTweets < 1000){ 
 				    console.log(tweet.text);
 				    if(typeof(tweet.text) == 'string'){
 					    testVector.push(tweet.text);
